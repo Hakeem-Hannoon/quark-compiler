@@ -1,10 +1,9 @@
-#include "Lexer.h"
+#include "quark/Lexer.h"
 #include <cctype>   // for isspace, isalpha, isdigit, isalnum
 
 // Constructor
 Lexer::Lexer(const std::string& source) : source(source), curr_pos(0) {}
 
-// The tokenize method
 std::vector<Token> Lexer::tokenize() {
     std::vector<Token> tokens;
 
@@ -73,13 +72,13 @@ std::vector<Token> Lexer::tokenize() {
                 tokens.push_back({TokenType::SEMICOLON, ";"});
                 break;
             default:
-                // Unknown character – just skip it for now
+                // Skip unknown
                 break;
         }
         curr_pos++;
     }
 
-    // Always add the end-of-file token
+    // end-of-file
     tokens.push_back({TokenType::END_OF_FILE, ""});
 
     return tokens;
