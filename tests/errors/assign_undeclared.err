@@ -1,0 +1,1 @@
+assign_undeclared.qr:1: error: Assignment to undeclared variable: x

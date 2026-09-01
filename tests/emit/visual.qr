@@ -1,0 +1,5 @@
+// Every node kind the visualisers know how to draw.
+let width = 10;
+let total = 1 + 2 * (3 - 4);
+total = -width;
+print(total / 2);

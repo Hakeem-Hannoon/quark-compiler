@@ -1,0 +1,4 @@
+// A leading comment.
+let x = 1; // A trailing comment.
+// let y = undeclared_and_ignored;
+print(x);

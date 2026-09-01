@@ -1,0 +1,1 @@
+missing_semicolon.qr:2: error: Expected ';' after declaration, got 'let'

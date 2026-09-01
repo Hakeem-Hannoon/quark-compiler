@@ -1,0 +1,8 @@
+let count = 1;
+count = count + 41;
+print(count);
+
+let temp = count;
+count = temp * 2;
+print(count);
+print(temp);

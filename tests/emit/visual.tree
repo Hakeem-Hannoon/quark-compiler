@@ -1,0 +1,19 @@
+Program
+├─ Let width
+│  └─ Integer 10
+├─ Let total
+│  └─ Binary +
+│     ├─ Integer 1
+│     └─ Binary *
+│        ├─ Integer 2
+│        └─ Binary -
+│           ├─ Integer 3
+│           └─ Integer 4
+├─ Assign total
+│  └─ Unary -
+│     └─ Identifier width
+└─ ExprStmt
+   └─ Call print
+      └─ Binary /
+         ├─ Identifier total
+         └─ Integer 2

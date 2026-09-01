@@ -1,0 +1,20 @@
+// Everything Quark can currently do.
+
+let width = 10;
+let height = 4;
+
+// Precedence and parentheses.
+let area = width * height;
+let perimeter = 2 * (width + height);
+
+print(area);
+print(perimeter);
+
+// Variables can be reassigned after they are declared.
+let scale = 3;
+area = area * scale;
+print(area);
+
+// Unary minus, and integer division that truncates toward zero.
+print(-area);
+print(area / 7);

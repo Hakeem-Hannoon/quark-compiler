@@ -1,0 +1,6 @@
+// Quark names that collide with C keywords must survive code generation.
+let int = 3;
+let printf = 4;
+let _private = 5;
+let main = 6;
+print(int + printf + _private + main);
