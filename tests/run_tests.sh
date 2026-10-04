@@ -3,7 +3,8 @@
 # Quark end-to-end tests.
 #
 #   tests/cases/NAME.qr        compiles, runs, and its stdout must match NAME.out
-#   tests/errors/NAME.qr       must fail to compile with the message in NAME.err
+#   tests/errors/NAME.qr       must fail to compile with exactly the errors in
+#                              NAME.err, one per line, in that order
 #
 # Usage: QUARKC=build/quarkc tests/run_tests.sh
 
@@ -88,6 +89,20 @@ for source in "$root"/tests/errors/*.qr; do
     fi
 
     expected=$(cat "$expected_file")
+
+    # Diagnostics name the file by the path it was given; the goldens use the
+    # bare file name so they do not depend on where the repo is checked out.
+    actual=${actual//"$root/tests/errors/"/}
+
+    # One error per line of the golden: an extra message, such as a cascade
+    # caused by the first, is a failure even if the expected ones are there.
+    expected_count=$(printf '%s\n' "$expected" | grep -c ': error: ')
+    actual_count=$(printf '%s\n' "$actual" | grep -c ': error: ')
+
+    if [ "$actual_count" -ne "$expected_count" ]; then
+        fail "error/$name" "expected $expected_count error(s), got $actual_count" "actual: $actual"
+        continue
+    fi
 
     case "$actual" in
         *"$expected"*)
