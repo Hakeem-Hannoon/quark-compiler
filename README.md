@@ -96,6 +96,10 @@ print(x * 2);      // the only builtin; takes exactly one argument
 Operators are `+ - * /` with the usual precedence, unary `-` and `+`, and
 parentheses for grouping. Division truncates toward zero, as in C.
 
+Integer literals run from `-2147483648` to `2147483647`. An expression may be
+at most 500 levels deep, counting both nesting and the length of an operator
+chain; past that `quarkc` reports an error instead of overflowing its stack.
+
 Grammar:
 
 ```

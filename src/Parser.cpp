@@ -1,5 +1,6 @@
 #include "quark/Parser.h"
 #include "quark/Error.h"
+#include <algorithm>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -20,6 +21,25 @@ namespace {
     // The most negative int is one further from zero than the most positive,
     // so its digits are only a valid literal directly under a unary minus.
     const long long INT_MIN_MAGNITUDE = 2147483648LL;
+
+    // The parser recurses once per level of nesting, and every later stage
+    // recurses once per level of the tree it built, so an expression with no
+    // limit on either would overflow the stack. Nobody writes one this deep by
+    // hand; the cap turns a crash on generated or hostile input into an error.
+    const int MAX_EXPRESSION_DEPTH = 500;
+
+    std::string tooDeepMessage() {
+        return "Expression is too complex (more than " +
+               std::to_string(MAX_EXPRESSION_DEPTH) + " levels deep)";
+    }
+
+    // Holds one level of Parser::nesting for as long as it is in scope.
+    struct NestingGuard {
+        int& nesting;
+
+        explicit NestingGuard(int& nesting) : nesting(nesting) {}
+        ~NestingGuard() { nesting--; }
+    };
 
     // The value of an INTEGER token's digits, or false if there are too many
     // of them to hold at all.
@@ -96,6 +116,25 @@ Token Parser::consume(TokenType type, const std::string& expected){
     return advance();
 }
 
+// Called on the way down, before recursing into a nested expression. The
+// caller pairs it with a NestingGuard to give the level back.
+void Parser::enterExpression(const Token& at){
+    if (nesting >= MAX_EXPRESSION_DEPTH){
+        throw CompileError(at.line, tooDeepMessage());
+    }
+
+    nesting++;
+}
+
+// Called on the way back up, with the height a node about to be built would
+// have. Parentheses add nesting but no height; a long `a + b + c + ...` adds
+// height but no nesting, because it is parsed in a loop. Hence both checks.
+void Parser::checkHeight(int candidate, const Token& at){
+    if (candidate > MAX_EXPRESSION_DEPTH){
+        throw CompileError(at.line, tooDeepMessage());
+    }
+}
+
 // ---------------------------------------------------------------- expressions
 
 Expr* Parser::parsePrimary(){
@@ -112,6 +151,7 @@ Expr* Parser::parsePrimary(){
 
         Expr* expr = new IntegerExpr(static_cast<int>(value));
         expr->line = token.line;
+        height = 1;
 
         return expr;
     }
@@ -124,16 +164,22 @@ Expr* Parser::parsePrimary(){
             advance();
 
             std::vector<Expr*> args;
+            int tallest_arg = 0;
 
             // Clean up the arguments parsed so far if a later one throws.
             try {
+                enterExpression(token);
+                NestingGuard guard(nesting);
+
                 if (!check(TokenType::RPAREN)){
                     do {
                         args.push_back(parseExpression());
+                        tallest_arg = std::max(tallest_arg, height);
                     } while (match(TokenType::COMMA));
                 }
 
                 consume(TokenType::RPAREN, "')' after arguments");
+                checkHeight(tallest_arg + 1, token);
             } catch (...) {
                 for (Expr* arg : args) {
                     delete arg;
@@ -143,17 +189,23 @@ Expr* Parser::parsePrimary(){
 
             Expr* expr = new CallExpr(token.value, args);
             expr->line = token.line;
+            height = tallest_arg + 1;
 
             return expr;
         }
 
         Expr* expr = new IdentifierExpr(token.value);
         expr->line = token.line;
+        height = 1;
 
         return expr;
     }
 
     if (match(TokenType::LPAREN)){
+        enterExpression(token);
+        NestingGuard guard(nesting);
+
+        // Grouping builds no node of its own, so `height` passes through.
         Expr* expr = parseExpression();
 
         try {
@@ -184,6 +236,7 @@ Expr* Parser::parseUnary(){
 
             Expr* expr = new IntegerExpr(std::numeric_limits<int>::min());
             expr->line = op.line;
+            height = 1;
 
             return expr;
         }
@@ -192,10 +245,15 @@ Expr* Parser::parseUnary(){
     if (check(TokenType::MINUS) || check(TokenType::PLUS)){
         Token op = advance();
 
-        Expr* operand = parseUnary();
+        enterExpression(op);
+        NestingGuard guard(nesting);
 
-        Expr* expr = new UnaryExpr(op.value, operand);
+        std::unique_ptr<Expr> operand(parseUnary());
+        checkHeight(height + 1, op);
+
+        Expr* expr = new UnaryExpr(op.value, operand.release());
         expr->line = op.line;
+        height = height + 1;
 
         return expr;
     }
@@ -205,6 +263,7 @@ Expr* Parser::parseUnary(){
 
 Expr* Parser::parseMultiplication(){
     std::unique_ptr<Expr> left(parseUnary());
+    int left_height = height;
 
     while (
         check(TokenType::STAR) ||
@@ -212,19 +271,25 @@ Expr* Parser::parseMultiplication(){
     ){
         Token op = advance();
 
-        Expr* right = parseUnary();
+        std::unique_ptr<Expr> right(parseUnary());
 
-        Expr* combined = new BinaryExpr(op.value, left.release(), right);
+        left_height = std::max(left_height, height) + 1;
+        checkHeight(left_height, op);
+
+        Expr* combined = new BinaryExpr(op.value, left.release(), right.release());
         combined->line = op.line;
 
         left.reset(combined);
     }
+
+    height = left_height;
 
     return left.release();
 }
 
 Expr* Parser::parseAddition() {
     std::unique_ptr<Expr> left(parseMultiplication());
+    int left_height = height;
 
     while (
         check(TokenType::PLUS) ||
@@ -232,17 +297,22 @@ Expr* Parser::parseAddition() {
     ) {
         Token op = advance();
 
-        Expr* right = parseMultiplication();
+        std::unique_ptr<Expr> right(parseMultiplication());
+
+        left_height = std::max(left_height, height) + 1;
+        checkHeight(left_height, op);
 
         Expr* combined = new BinaryExpr(
             op.value,
             left.release(),
-            right
+            right.release()
         );
         combined->line = op.line;
 
         left.reset(combined);
     }
+
+    height = left_height;
 
     return left.release();
 }

@@ -23,12 +23,20 @@ private:
     std::vector<Token> tokens;
     int curr_pos = 0;
 
+    // How many expressions deep the parser currently is, and how tall the tree
+    // for the expression it most recently finished came out. Both are capped
+    // so that no input can overflow the stack; see enterExpression().
+    int nesting = 0;
+    int height = 0;
+
     Token peek();
     Token peekNext();
     Token advance();
     bool check(TokenType type);
     bool match(TokenType type);
     int missingLine();
+    void enterExpression(const Token& at);
+    void checkHeight(int candidate, const Token& at);
     Token consume(TokenType type, const std::string& expected);
 
     Stmt* parseStatement();
