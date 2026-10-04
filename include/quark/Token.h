@@ -9,6 +9,11 @@ enum class TokenType {
 
     LPAREN, RPAREN, COMMA, SEMICOLON,
 
+    // Text the lexer could not make sense of. It has already reported the
+    // problem; the token marks the spot so the parser can step around it
+    // without complaining a second time.
+    INVALID,
+
     END_OF_FILE
 };
 

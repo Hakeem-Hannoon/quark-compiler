@@ -81,6 +81,7 @@ void Lexer::advance() {
 
 std::vector<Token> Lexer::tokenize() {
     std::vector<Token> tokens;
+    found_errors.clear();
     const int size = static_cast<int>(source.size());
 
     while (curr_pos < size) {
@@ -135,11 +136,13 @@ std::vector<Token> Lexer::tokenize() {
                     advance();
                 }
 
-                throw CompileError(
-                    line,
-                    column,
-                    "Malformed number: " + source.substr(start, curr_pos - start)
+                std::string text = source.substr(start, curr_pos - start);
+
+                found_errors.push_back(
+                    CompileError(line, column, "Malformed number: " + text)
                 );
+                tokens.push_back({TokenType::INVALID, text, line, column});
+                continue;
             }
 
             std::string text = source.substr(start, curr_pos - start);
@@ -179,11 +182,21 @@ std::vector<Token> Lexer::tokenize() {
             default: {
                 const int length = utf8Length(source, curr_pos);
 
-                throw CompileError(
+                found_errors.push_back(CompileError(
                     line,
                     column,
                     describeUnexpected(source, curr_pos, length)
+                ));
+                tokens.push_back(
+                    {TokenType::INVALID, source.substr(curr_pos, length), line, column}
                 );
+
+                // Step over the whole character; the advance() below takes
+                // the last byte of it.
+                for (int i = 1; i < length; i++) {
+                    advance();
+                }
+                break;
             }
         }
         advance();

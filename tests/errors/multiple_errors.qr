@@ -1,0 +1,7 @@
+// Every lexical and syntax error is reported in one run, in source order.
+let a = 1
+let b = 2 @ 3;
+let c = (4 + ;
+let d = 12abc;
+let e = 5;
+print(e)

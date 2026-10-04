@@ -1,0 +1,5 @@
+multiple_errors.qr:2:10: error: Expected ';' after declaration, got 'let'
+multiple_errors.qr:3:11: error: Unexpected character: '@'
+multiple_errors.qr:4:14: error: Expected expression, got ';'
+multiple_errors.qr:5:9: error: Malformed number: 12abc
+multiple_errors.qr:7:9: error: Expected ';' after expression, got end of file

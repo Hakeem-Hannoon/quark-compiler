@@ -24,18 +24,24 @@ private:
     std::vector<Token> tokens;
     int curr_pos = 0;
 
+    // Index of the first token of the statement being parsed.
+    int statement_start = 0;
+
     // How many expressions deep the parser currently is, and how tall the tree
     // for the expression it most recently finished came out. Both are capped
     // so that no input can overflow the stack; see enterExpression().
     int nesting = 0;
     int height = 0;
 
+    std::vector<CompileError> found_errors;
+
     Token peek();
     Token peekNext();
     Token advance();
     bool check(TokenType type);
     bool match(TokenType type);
-    CompileError missing(const std::string& expected);
+    [[noreturn]] void fail(const std::string& expected);
+    void synchronize();
     void enterExpression(const Token& at);
     void checkHeight(int candidate, const Token& at);
     Token consume(TokenType type, const std::string& expected);
@@ -55,7 +61,14 @@ public:
 
     // Parses the whole token stream. The caller owns the returned Program,
     // which in turn owns every node below it.
+    //
+    // A statement that does not parse is recorded in errors() and left out,
+    // and parsing resumes at the next statement, so one run reports every
+    // syntax error in the file. A Program is only meaningful if errors() is
+    // empty afterwards.
     Program* parseProgram();
+
+    const std::vector<CompileError>& errors() const { return found_errors; }
 
     Expr* parseExpression();
 };

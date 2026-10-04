@@ -16,6 +16,10 @@ namespace {
         return "'" + token.value + "'";
     }
 
+    // Thrown to abandon a statement whose problem the lexer has already
+    // reported, so that it is skipped without a second message.
+    struct AlreadyReported {};
+
     // Records where in the source a freshly built node came from.
     void locate(Node* node, const Token& token) {
         node->line = token.line;
@@ -98,29 +102,49 @@ bool Parser::match(TokenType type){
     return false;
 }
 
-// The error for something expected at the cursor that is not there. It points
-// at the token found instead, unless that token has wandered onto a later
-// line: then the gap is back where the previous token ended, not wherever the
-// source happens to resume.
-CompileError Parser::missing(const std::string& expected){
+// Abandons the current statement because what the grammar needs at the cursor
+// is not there. The error points at the token found instead, unless that token
+// has wandered onto a later line than the rest of the statement: then the gap
+// is back where the previous token ended, not wherever the source happens to
+// resume.
+void Parser::fail(const std::string& expected){
     const Token found = peek();
+
+    if (found.type == TokenType::INVALID){
+        throw AlreadyReported();
+    }
 
     int line = found.line;
     int column = found.column;
 
-    if (curr_pos > 0 && tokens[curr_pos - 1].line < line){
+    if (curr_pos > statement_start && tokens[curr_pos - 1].line < line){
         const Token& before = tokens[curr_pos - 1];
 
         line = before.line;
         column = before.column + static_cast<int>(before.value.size());
     }
 
-    return CompileError(line, column, "Expected " + expected + ", got " + describe(found));
+    throw CompileError(line, column, "Expected " + expected + ", got " + describe(found));
+}
+
+// Skips to where the next statement starts: just past a ';', or at a 'let'.
+// Without this, everything after a mistake would be read from the middle of a
+// statement and reported as a pile of errors that are not really there.
+void Parser::synchronize(){
+    while (!check(TokenType::END_OF_FILE)){
+        if (check(TokenType::LET)){
+            return;
+        }
+
+        if (advance().type == TokenType::SEMICOLON){
+            return;
+        }
+    }
 }
 
 Token Parser::consume(TokenType type, const std::string& expected){
     if (peek().type != type){
-        throw missing(expected);
+        fail(expected);
     }
 
     return advance();
@@ -232,7 +256,7 @@ Expr* Parser::parsePrimary(){
         return expr;
     }
 
-    throw missing("expression");
+    fail("expression");
 }
 
 Expr* Parser::parseUnary(){
@@ -379,6 +403,8 @@ Stmt* Parser::parseExprStatement(){
 }
 
 Stmt* Parser::parseStatement(){
+    statement_start = curr_pos;
+
     if (check(TokenType::LET)){
         return parseLet();
     }
@@ -395,8 +421,17 @@ Program* Parser::parseProgram(){
     program->line = 1;
     program->column = 1;
 
+    found_errors.clear();
+
     while (!check(TokenType::END_OF_FILE)){
-        program->statements.push_back(parseStatement());
+        try {
+            program->statements.push_back(parseStatement());
+        } catch (const CompileError& error) {
+            found_errors.push_back(error);
+            synchronize();
+        } catch (const AlreadyReported&) {
+            synchronize();
+        }
     }
 
     return program.release();

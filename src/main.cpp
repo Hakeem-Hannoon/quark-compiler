@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -172,6 +173,45 @@ int exitCodeOf(int status) {
 #endif
 }
 
+void printError(const std::string& input, const CompileError& error) {
+    std::cerr << input << ":" << error.line() << ":" << error.column()
+              << ": error: " << error.what() << "\n";
+}
+
+// A file that is not Quark at all would otherwise bury the terminal.
+const std::size_t MAX_REPORTED_ERRORS = 20;
+
+// Prints the errors in source order. Returns whether there were any.
+bool reportErrors(const std::string& input, std::vector<CompileError> errors) {
+    if (errors.empty()) {
+        return false;
+    }
+
+    std::stable_sort(
+        errors.begin(),
+        errors.end(),
+        [](const CompileError& a, const CompileError& b) {
+            if (a.line() != b.line()) {
+                return a.line() < b.line();
+            }
+            return a.column() < b.column();
+        }
+    );
+
+    const std::size_t shown = std::min(errors.size(), MAX_REPORTED_ERRORS);
+
+    for (std::size_t i = 0; i < shown; i++) {
+        printError(input, errors[i]);
+    }
+
+    if (shown < errors.size()) {
+        std::cerr << "quarkc: " << (errors.size() - shown)
+                  << " more errors not shown\n";
+    }
+
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -193,6 +233,10 @@ int main(int argc, char** argv) {
         std::vector<Token> tokens = lexer.tokenize();
 
         if (options.emit_tokens) {
+            if (reportErrors(options.input, lexer.errors())) {
+                return 1;
+            }
+
             for (const Token& token : tokens) {
                 std::cout << tokenTypeToString(token.type)
                           << "(\"" << token.value << "\")"
@@ -203,6 +247,15 @@ int main(int argc, char** argv) {
 
         Parser parser(tokens);
         std::unique_ptr<Program> program(parser.parseProgram());
+
+        // The lexer and parser both keep going past a mistake, so this is
+        // every lexical and syntax error in the file, not just the first.
+        std::vector<CompileError> errors = lexer.errors();
+        errors.insert(errors.end(), parser.errors().begin(), parser.errors().end());
+
+        if (reportErrors(options.input, errors)) {
+            return 1;
+        }
 
         Analyzer analyzer;
         analyzer.analyze(program.get());
@@ -268,8 +321,7 @@ int main(int argc, char** argv) {
 
         return 0;
     } catch (const CompileError& error) {
-        std::cerr << options.input << ":" << error.line() << ":" << error.column()
-                  << ": error: " << error.what() << "\n";
+        printError(options.input, error);
         return 1;
     } catch (const std::exception& error) {
         std::cerr << "quarkc: " << error.what() << "\n";

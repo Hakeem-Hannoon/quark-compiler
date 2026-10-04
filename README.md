@@ -134,6 +134,12 @@ classifies node types is written once rather than once per output format.
 `file.qr:3:9: error: ...` diagnostic. Lines and columns both count from 1, and
 columns count characters rather than bytes.
 
+The lexer and parser do not stop at the first mistake. The lexer marks text it
+cannot read and carries on; the parser drops the statement it was in and
+resumes at the next one. So one run reports every lexical and syntax error in
+the file. The analyzer only runs on a program that parsed cleanly, and still
+stops at its first error.
+
 Quark variables are emitted with a `q_` prefix, so a variable named `int` or
 `printf` cannot collide with anything in the generated C.
 
@@ -147,7 +153,8 @@ discarded, and division by a literal zero.
 `tests/run_tests.sh` drives the built compiler end to end.
 
 - `tests/cases/NAME.qr` must compile, run, and print exactly `NAME.out`.
-- `tests/errors/NAME.qr` must be rejected with the message in `NAME.err`.
+- `tests/errors/NAME.qr` must be rejected with exactly the errors in `NAME.err`,
+  one per line.
 - `tests/emit/NAME.qr` must render to `NAME.tree` and `NAME.dot`. Its SVG is
   checked structurally — one box per AST node, document closed — rather than
   pinned to exact geometry.
