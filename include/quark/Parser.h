@@ -28,6 +28,7 @@ private:
     Token advance();
     bool check(TokenType type);
     bool match(TokenType type);
+    int missingLine();
     Token consume(TokenType type, const std::string& expected);
 
     Stmt* parseStatement();

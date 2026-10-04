@@ -72,10 +72,23 @@ bool Parser::match(TokenType type){
     return false;
 }
 
+// Where to report that something expected at the cursor is not there. When the
+// next token has wandered onto a later line, the gap is back at the end of the
+// line that was being parsed, not wherever the source happens to resume.
+int Parser::missingLine(){
+    int line = peek().line;
+
+    if (curr_pos > 0 && tokens[curr_pos - 1].line < line){
+        line = tokens[curr_pos - 1].line;
+    }
+
+    return line;
+}
+
 Token Parser::consume(TokenType type, const std::string& expected){
     if (peek().type != type){
         throw CompileError(
-            peek().line,
+            missingLine(),
             "Expected " + expected + ", got " + describe(peek())
         );
     }
@@ -154,7 +167,7 @@ Expr* Parser::parsePrimary(){
     }
 
     throw CompileError(
-        token.line,
+        missingLine(),
         "Expected expression, got " + describe(token)
     );
 }
