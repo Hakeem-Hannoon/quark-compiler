@@ -1,0 +1,7 @@
+// The most negative int can only be written as a negated literal.
+let lowest = -2147483648;
+print(lowest);
+print(lowest + 1);
+print(- 2147483648 / 2);
+print(-2147483647);
+print(2147483647);

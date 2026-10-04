@@ -1,5 +1,6 @@
 #include "quark/Parser.h"
 #include "quark/Error.h"
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -12,6 +13,24 @@ namespace {
         }
 
         return "'" + token.value + "'";
+    }
+
+    const long long INT_MAX_VALUE = 2147483647LL;
+
+    // The most negative int is one further from zero than the most positive,
+    // so its digits are only a valid literal directly under a unary minus.
+    const long long INT_MIN_MAGNITUDE = 2147483648LL;
+
+    // The value of an INTEGER token's digits, or false if there are too many
+    // of them to hold at all.
+    bool literalMagnitude(const Token& token, long long& value) {
+        try {
+            value = std::stoll(token.value);
+        } catch (const std::out_of_range&) {
+            return false;
+        }
+
+        return true;
     }
 }
 
@@ -73,13 +92,8 @@ Expr* Parser::parsePrimary(){
         advance();
 
         long long value = 0;
-        try {
-            value = std::stoll(token.value);
-        } catch (const std::out_of_range&) {
-            throw CompileError(token.line, "Integer literal out of range: " + token.value);
-        }
 
-        if (value > 2147483647LL) {
+        if (!literalMagnitude(token, value) || value > INT_MAX_VALUE) {
             throw CompileError(token.line, "Integer literal out of range: " + token.value);
         }
 
@@ -146,6 +160,22 @@ Expr* Parser::parsePrimary(){
 }
 
 Expr* Parser::parseUnary(){
+    // `-2147483648` has to be read as one literal: negating 2147483648 would
+    // mean first holding a value that does not fit in an int.
+    if (check(TokenType::MINUS) && peekNext().type == TokenType::INTEGER){
+        long long magnitude = 0;
+
+        if (literalMagnitude(peekNext(), magnitude) && magnitude == INT_MIN_MAGNITUDE){
+            Token op = advance();
+            advance();
+
+            Expr* expr = new IntegerExpr(std::numeric_limits<int>::min());
+            expr->line = op.line;
+
+            return expr;
+        }
+    }
+
     if (check(TokenType::MINUS) || check(TokenType::PLUS)){
         Token op = advance();
 

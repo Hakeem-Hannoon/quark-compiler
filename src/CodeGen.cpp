@@ -1,5 +1,6 @@
 #include "quark/CodeGen.h"
 #include "quark/Error.h"
+#include <limits>
 
 namespace {
     // Quark names live in their own namespace in the generated C, so a Quark
@@ -49,6 +50,12 @@ void CodeGen::emitStatement(Stmt* stmt) {
 
 std::string CodeGen::emitExpression(Expr* expr) {
     if (IntegerExpr* integer = dynamic_cast<IntegerExpr*>(expr)) {
+        // C has no negative literals: `-2147483648` is a minus applied to a
+        // constant too large for int, which makes the whole expression a long.
+        if (integer->value == std::numeric_limits<int>::min()) {
+            return "(-2147483647 - 1)";
+        }
+
         return std::to_string(integer->value);
     }
 
