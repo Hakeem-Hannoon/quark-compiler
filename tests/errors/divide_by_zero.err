@@ -1,1 +1,1 @@
-divide_by_zero.qr:2: error: Division by zero
+divide_by_zero.qr:2:9: error: Division by zero

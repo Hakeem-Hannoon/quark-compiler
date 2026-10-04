@@ -1,1 +1,1 @@
-bad_character.qr:2: error: Unexpected character: '@'
+bad_character.qr:2:11: error: Unexpected character: '@'

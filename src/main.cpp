@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
             for (const Token& token : tokens) {
                 std::cout << tokenTypeToString(token.type)
                           << "(\"" << token.value << "\")"
-                          << " @ line " << token.line << "\n";
+                          << " @ " << token.line << ":" << token.column << "\n";
             }
             return 0;
         }
@@ -268,8 +268,8 @@ int main(int argc, char** argv) {
 
         return 0;
     } catch (const CompileError& error) {
-        std::cerr << options.input << ":" << error.line() << ": error: "
-                  << error.what() << "\n";
+        std::cerr << options.input << ":" << error.line() << ":" << error.column()
+                  << ": error: " << error.what() << "\n";
         return 1;
     } catch (const std::exception& error) {
         std::cerr << "quarkc: " << error.what() << "\n";

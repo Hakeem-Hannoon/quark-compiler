@@ -1,1 +1,1 @@
-bad_byte.qr:1: error: Unexpected byte: 0xFF
+bad_byte.qr:1:11: error: Unexpected byte: 0xFF

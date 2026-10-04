@@ -3,10 +3,11 @@
 #include <string>
 #include <vector>
 
-// Every node knows the line it came from so later stages can report errors
+// Every node knows where it came from so later stages can report errors
 // against the original source.
 struct Node {
     int line = 0;
+    int column = 0;
 
     virtual ~Node() = default;
 };

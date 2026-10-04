@@ -1,1 +1,1 @@
-long_chain.qr:2: error: Expression is too complex (more than 500 levels deep)
+long_chain.qr:2:2007: error: Expression is too complex (more than 500 levels deep)

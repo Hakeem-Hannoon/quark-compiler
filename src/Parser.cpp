@@ -16,6 +16,12 @@ namespace {
         return "'" + token.value + "'";
     }
 
+    // Records where in the source a freshly built node came from.
+    void locate(Node* node, const Token& token) {
+        node->line = token.line;
+        node->column = token.column;
+    }
+
     const long long INT_MAX_VALUE = 2147483647LL;
 
     // The most negative int is one further from zero than the most positive,
@@ -92,25 +98,29 @@ bool Parser::match(TokenType type){
     return false;
 }
 
-// Where to report that something expected at the cursor is not there. When the
-// next token has wandered onto a later line, the gap is back at the end of the
-// line that was being parsed, not wherever the source happens to resume.
-int Parser::missingLine(){
-    int line = peek().line;
+// The error for something expected at the cursor that is not there. It points
+// at the token found instead, unless that token has wandered onto a later
+// line: then the gap is back where the previous token ended, not wherever the
+// source happens to resume.
+CompileError Parser::missing(const std::string& expected){
+    const Token found = peek();
+
+    int line = found.line;
+    int column = found.column;
 
     if (curr_pos > 0 && tokens[curr_pos - 1].line < line){
-        line = tokens[curr_pos - 1].line;
+        const Token& before = tokens[curr_pos - 1];
+
+        line = before.line;
+        column = before.column + static_cast<int>(before.value.size());
     }
 
-    return line;
+    return CompileError(line, column, "Expected " + expected + ", got " + describe(found));
 }
 
 Token Parser::consume(TokenType type, const std::string& expected){
     if (peek().type != type){
-        throw CompileError(
-            missingLine(),
-            "Expected " + expected + ", got " + describe(peek())
-        );
+        throw missing(expected);
     }
 
     return advance();
@@ -120,7 +130,7 @@ Token Parser::consume(TokenType type, const std::string& expected){
 // caller pairs it with a NestingGuard to give the level back.
 void Parser::enterExpression(const Token& at){
     if (nesting >= MAX_EXPRESSION_DEPTH){
-        throw CompileError(at.line, tooDeepMessage());
+        throw CompileError(at.line, at.column, tooDeepMessage());
     }
 
     nesting++;
@@ -131,7 +141,7 @@ void Parser::enterExpression(const Token& at){
 // height but no nesting, because it is parsed in a loop. Hence both checks.
 void Parser::checkHeight(int candidate, const Token& at){
     if (candidate > MAX_EXPRESSION_DEPTH){
-        throw CompileError(at.line, tooDeepMessage());
+        throw CompileError(at.line, at.column, tooDeepMessage());
     }
 }
 
@@ -146,11 +156,15 @@ Expr* Parser::parsePrimary(){
         long long value = 0;
 
         if (!literalMagnitude(token, value) || value > INT_MAX_VALUE) {
-            throw CompileError(token.line, "Integer literal out of range: " + token.value);
+            throw CompileError(
+                token.line,
+                token.column,
+                "Integer literal out of range: " + token.value
+            );
         }
 
         Expr* expr = new IntegerExpr(static_cast<int>(value));
-        expr->line = token.line;
+        locate(expr, token);
         height = 1;
 
         return expr;
@@ -188,14 +202,14 @@ Expr* Parser::parsePrimary(){
             }
 
             Expr* expr = new CallExpr(token.value, args);
-            expr->line = token.line;
+            locate(expr, token);
             height = tallest_arg + 1;
 
             return expr;
         }
 
         Expr* expr = new IdentifierExpr(token.value);
-        expr->line = token.line;
+        locate(expr, token);
         height = 1;
 
         return expr;
@@ -218,10 +232,7 @@ Expr* Parser::parsePrimary(){
         return expr;
     }
 
-    throw CompileError(
-        missingLine(),
-        "Expected expression, got " + describe(token)
-    );
+    throw missing("expression");
 }
 
 Expr* Parser::parseUnary(){
@@ -235,7 +246,7 @@ Expr* Parser::parseUnary(){
             advance();
 
             Expr* expr = new IntegerExpr(std::numeric_limits<int>::min());
-            expr->line = op.line;
+            locate(expr, op);
             height = 1;
 
             return expr;
@@ -252,7 +263,7 @@ Expr* Parser::parseUnary(){
         checkHeight(height + 1, op);
 
         Expr* expr = new UnaryExpr(op.value, operand.release());
-        expr->line = op.line;
+        locate(expr, op);
         height = height + 1;
 
         return expr;
@@ -277,7 +288,7 @@ Expr* Parser::parseMultiplication(){
         checkHeight(left_height, op);
 
         Expr* combined = new BinaryExpr(op.value, left.release(), right.release());
-        combined->line = op.line;
+        locate(combined, op);
 
         left.reset(combined);
     }
@@ -307,7 +318,7 @@ Expr* Parser::parseAddition() {
             left.release(),
             right.release()
         );
-        combined->line = op.line;
+        locate(combined, op);
 
         left.reset(combined);
     }
@@ -334,7 +345,7 @@ Stmt* Parser::parseLet(){
     consume(TokenType::SEMICOLON, "';' after declaration");
 
     Stmt* stmt = new LetStmt(name.value, value.release());
-    stmt->line = keyword.line;
+    locate(stmt, keyword);
 
     return stmt;
 }
@@ -349,20 +360,20 @@ Stmt* Parser::parseAssignment(){
     consume(TokenType::SEMICOLON, "';' after assignment");
 
     Stmt* stmt = new AssignStmt(name.value, value.release());
-    stmt->line = name.line;
+    locate(stmt, name);
 
     return stmt;
 }
 
 Stmt* Parser::parseExprStatement(){
-    int line = peek().line;
+    Token first = peek();
 
     std::unique_ptr<Expr> expr(parseExpression());
 
     consume(TokenType::SEMICOLON, "';' after expression");
 
     Stmt* stmt = new ExprStmt(expr.release());
-    stmt->line = line;
+    locate(stmt, first);
 
     return stmt;
 }
@@ -382,6 +393,7 @@ Stmt* Parser::parseStatement(){
 Program* Parser::parseProgram(){
     std::unique_ptr<Program> program(new Program());
     program->line = 1;
+    program->column = 1;
 
     while (!check(TokenType::END_OF_FILE)){
         program->statements.push_back(parseStatement());

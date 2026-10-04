@@ -1,1 +1,1 @@
-print_arity.qr:1: error: print() takes 1 argument, got 2
+print_arity.qr:1:1: error: print() takes 1 argument, got 2

@@ -1,1 +1,1 @@
-print_as_value.qr:2: error: print() does not return a value
+print_as_value.qr:2:9: error: print() does not return a value

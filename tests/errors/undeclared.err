@@ -1,1 +1,1 @@
-undeclared.qr:2: error: Undeclared variable: y
+undeclared.qr:2:7: error: Undeclared variable: y

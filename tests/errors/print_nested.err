@@ -1,1 +1,1 @@
-print_nested.qr:2: error: print() does not return a value
+print_nested.qr:2:7: error: print() does not return a value

@@ -45,7 +45,7 @@ void CodeGen::emitStatement(Stmt* stmt) {
         return;
     }
 
-    throw CompileError(stmt->line, "Cannot generate code for this statement");
+    throw CompileError(stmt->line, stmt->column, "Cannot generate code for this statement");
 }
 
 std::string CodeGen::emitExpression(Expr* expr) {
@@ -81,8 +81,8 @@ std::string CodeGen::emitExpression(Expr* expr) {
             return "printf(\"%d\\n\", " + emitExpression(call->args[0]) + ")";
         }
 
-        throw CompileError(call->line, "Unknown function: " + call->callee);
+        throw CompileError(call->line, call->column, "Unknown function: " + call->callee);
     }
 
-    throw CompileError(expr->line, "Cannot generate code for this expression");
+    throw CompileError(expr->line, expr->column, "Cannot generate code for this expression");
 }

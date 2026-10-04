@@ -4,6 +4,7 @@
 #include <vector>
 #include "Token.h"
 #include "AST.h"
+#include "Error.h"
 
 // Recursive-descent parser for Quark.
 //
@@ -34,7 +35,7 @@ private:
     Token advance();
     bool check(TokenType type);
     bool match(TokenType type);
-    int missingLine();
+    CompileError missing(const std::string& expected);
     void enterExpression(const Token& at);
     void checkHeight(int candidate, const Token& at);
     Token consume(TokenType type, const std::string& expected);

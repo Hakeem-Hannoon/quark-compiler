@@ -1,1 +1,1 @@
-malformed_number.qr:2: error: Malformed number: 12abc
+malformed_number.qr:2:9: error: Malformed number: 12abc

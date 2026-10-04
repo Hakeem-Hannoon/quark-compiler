@@ -1,1 +1,1 @@
-deep_nesting.qr:2: error: Expression is too complex (more than 500 levels deep)
+deep_nesting.qr:2:509: error: Expression is too complex (more than 500 levels deep)

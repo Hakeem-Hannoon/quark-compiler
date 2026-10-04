@@ -20,7 +20,7 @@ void Analyzer::analyzeStatement(Stmt* stmt) {
         analyzeExpression(let->value);
 
         if (declared.count(let->name)) {
-            throw CompileError(let->line, "Variable already declared: " + let->name);
+            throw CompileError(let->line, let->column, "Variable already declared: " + let->name);
         }
 
         declared.insert(let->name);
@@ -31,6 +31,7 @@ void Analyzer::analyzeStatement(Stmt* stmt) {
         if (!declared.count(assign->name)) {
             throw CompileError(
                 assign->line,
+                assign->column,
                 "Assignment to undeclared variable: " + assign->name +
                     " (use 'let " + assign->name + " = ...')"
             );
@@ -48,6 +49,7 @@ void Analyzer::analyzeStatement(Stmt* stmt) {
         if (!call) {
             throw CompileError(
                 expression->line,
+                expression->column,
                 "Expression result is unused"
             );
         }
@@ -56,7 +58,7 @@ void Analyzer::analyzeStatement(Stmt* stmt) {
         return;
     }
 
-    throw CompileError(stmt->line, "Unsupported statement");
+    throw CompileError(stmt->line, stmt->column, "Unsupported statement");
 }
 
 void Analyzer::analyzeExpression(Expr* expr) {
@@ -68,6 +70,7 @@ void Analyzer::analyzeExpression(Expr* expr) {
         if (!declared.count(identifier->name)) {
             throw CompileError(
                 identifier->line,
+                identifier->column,
                 "Undeclared variable: " + identifier->name
             );
         }
@@ -87,7 +90,7 @@ void Analyzer::analyzeExpression(Expr* expr) {
             IntegerExpr* divisor = dynamic_cast<IntegerExpr*>(binary->right);
 
             if (divisor && divisor->value == 0) {
-                throw CompileError(binary->line, "Division by zero");
+                throw CompileError(binary->line, binary->column, "Division by zero");
             }
         }
         return;
@@ -101,21 +104,23 @@ void Analyzer::analyzeExpression(Expr* expr) {
         // program whatever C's printf happens to return.
         throw CompileError(
             call->line,
+            call->column,
             "print() does not return a value"
         );
     }
 
-    throw CompileError(expr->line, "Unsupported expression");
+    throw CompileError(expr->line, expr->column, "Unsupported expression");
 }
 
 void Analyzer::analyzeCall(CallExpr* call) {
     if (call->callee != BUILTIN_PRINT) {
-        throw CompileError(call->line, "Unknown function: " + call->callee);
+        throw CompileError(call->line, call->column, "Unknown function: " + call->callee);
     }
 
     if (call->args.size() != PRINT_ARITY) {
         throw CompileError(
             call->line,
+            call->column,
             "print() takes 1 argument, got " + std::to_string(call->args.size())
         );
     }

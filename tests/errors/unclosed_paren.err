@@ -1,1 +1,1 @@
-unclosed_paren.qr:1: error: Expected ')' after expression, got ';'
+unclosed_paren.qr:1:15: error: Expected ')' after expression, got ';'

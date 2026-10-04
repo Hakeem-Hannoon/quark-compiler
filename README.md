@@ -120,7 +120,7 @@ call           := IDENTIFIER "(" (expression ("," expression)*)? ")"
 
 | Stage | Files | Job |
 | --- | --- | --- |
-| Lexer | `Lexer.{h,cpp}`, `Token.{h,cpp}` | Source text to a token stream, tracking line numbers |
+| Lexer | `Lexer.{h,cpp}`, `Token.{h,cpp}` | Source text to a token stream, tracking line and column |
 | Parser | `Parser.{h,cpp}` | Recursive descent over tokens, producing the AST |
 | AST | `AST.h` | Node types; a `Program` owns everything below it |
 | Analyzer | `Analyzer.{h,cpp}` | Rejects programs that parse but cannot mean anything |
@@ -130,8 +130,9 @@ call           := IDENTIFIER "(" (expression ("," expression)*)? ")"
 `AstView.{h,cpp}` flattens the AST into a generic labelled tree, and
 `AstRender.cpp` turns that tree into text, SVG, or DOT — so the cascade that
 classifies node types is written once rather than once per output format.
-`Error.h` carries the line number that turns an exception into a
-`file.qr:3: error: ...` diagnostic.
+`Error.h` carries the position that turns an exception into a
+`file.qr:3:9: error: ...` diagnostic. Lines and columns both count from 1, and
+columns count characters rather than bytes.
 
 Quark variables are emitted with a `q_` prefix, so a variable named `int` or
 `printf` cannot collide with anything in the generated C.

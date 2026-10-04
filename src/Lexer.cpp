@@ -4,7 +4,8 @@
 #include <string>
 
 // Constructor
-Lexer::Lexer(const std::string& source) : source(source), curr_pos(0), curr_line(1) {}
+Lexer::Lexer(const std::string& source)
+    : source(source), curr_pos(0), curr_line(1), curr_column(1) {}
 
 namespace {
     bool isIdentifierStart(char c) {
@@ -63,6 +64,21 @@ namespace {
     }
 }
 
+// Steps past one byte, keeping the line and column in step with it. The
+// trailing bytes of a UTF-8 character do not move the column, so a column is a
+// count of characters.
+void Lexer::advance() {
+    const unsigned char byte = static_cast<unsigned char>(source[curr_pos]);
+    curr_pos++;
+
+    if (byte == '\n') {
+        curr_line++;
+        curr_column = 1;
+    } else if ((byte & 0xC0) != 0x80) {
+        curr_column++;
+    }
+}
+
 std::vector<Token> Lexer::tokenize() {
     std::vector<Token> tokens;
     const int size = static_cast<int>(source.size());
@@ -70,35 +86,36 @@ std::vector<Token> Lexer::tokenize() {
     while (curr_pos < size) {
         char c = source[curr_pos];
 
-        // 1. Skip whitespace, counting lines as we go
+        // 1. Skip whitespace
         if (std::isspace(static_cast<unsigned char>(c))) {
-            if (c == '\n') {
-                curr_line++;
-            }
-            curr_pos++;
+            advance();
             continue;
         }
 
         // 2. Comments: `// ...` to end of line
         if (c == '/' && curr_pos + 1 < size && source[curr_pos + 1] == '/') {
             while (curr_pos < size && source[curr_pos] != '\n') {
-                curr_pos++;
+                advance();
             }
             continue;
         }
+
+        // Everything below starts a token (or an error) at this position.
+        const int line = curr_line;
+        const int column = curr_column;
 
         // 3. Identifiers and the keyword "let"
         if (isIdentifierStart(c)) {
             int start = curr_pos;
             while (curr_pos < size && isIdentifierPart(source[curr_pos])) {
-                curr_pos++;
+                advance();
             }
             std::string text = source.substr(start, curr_pos - start);
 
             if (text == "let") {
-                tokens.push_back({TokenType::LET, text, curr_line});
+                tokens.push_back({TokenType::LET, text, line, column});
             } else {
-                tokens.push_back({TokenType::IDENTIFIER, text, curr_line});
+                tokens.push_back({TokenType::IDENTIFIER, text, line, column});
             }
             continue;
         }
@@ -108,70 +125,72 @@ std::vector<Token> Lexer::tokenize() {
             int start = curr_pos;
             while (curr_pos < size &&
                    std::isdigit(static_cast<unsigned char>(source[curr_pos]))) {
-                curr_pos++;
+                advance();
             }
 
             // `12abc` is a malformed literal, not an integer followed by a name.
             // Swallow the rest of the word so the message shows all of it.
             if (curr_pos < size && isIdentifierStart(source[curr_pos])) {
                 while (curr_pos < size && isIdentifierPart(source[curr_pos])) {
-                    curr_pos++;
+                    advance();
                 }
 
                 throw CompileError(
-                    curr_line,
+                    line,
+                    column,
                     "Malformed number: " + source.substr(start, curr_pos - start)
                 );
             }
 
             std::string text = source.substr(start, curr_pos - start);
-            tokens.push_back({TokenType::INTEGER, text, curr_line});
+            tokens.push_back({TokenType::INTEGER, text, line, column});
             continue;
         }
 
         // 5. Single-character tokens
         switch (c) {
             case '=':
-                tokens.push_back({TokenType::EQUAL, "=", curr_line});
+                tokens.push_back({TokenType::EQUAL, "=", line, column});
                 break;
             case '+':
-                tokens.push_back({TokenType::PLUS, "+", curr_line});
+                tokens.push_back({TokenType::PLUS, "+", line, column});
                 break;
             case '-':
-                tokens.push_back({TokenType::MINUS, "-", curr_line});
+                tokens.push_back({TokenType::MINUS, "-", line, column});
                 break;
             case '*':
-                tokens.push_back({TokenType::STAR, "*", curr_line});
+                tokens.push_back({TokenType::STAR, "*", line, column});
                 break;
             case '/':
-                tokens.push_back({TokenType::SLASH, "/", curr_line});
+                tokens.push_back({TokenType::SLASH, "/", line, column});
                 break;
             case '(':
-                tokens.push_back({TokenType::LPAREN, "(", curr_line});
+                tokens.push_back({TokenType::LPAREN, "(", line, column});
                 break;
             case ')':
-                tokens.push_back({TokenType::RPAREN, ")", curr_line});
+                tokens.push_back({TokenType::RPAREN, ")", line, column});
                 break;
             case ',':
-                tokens.push_back({TokenType::COMMA, ",", curr_line});
+                tokens.push_back({TokenType::COMMA, ",", line, column});
                 break;
             case ';':
-                tokens.push_back({TokenType::SEMICOLON, ";", curr_line});
+                tokens.push_back({TokenType::SEMICOLON, ";", line, column});
                 break;
             default: {
                 const int length = utf8Length(source, curr_pos);
 
                 throw CompileError(
-                    curr_line,
+                    line,
+                    column,
                     describeUnexpected(source, curr_pos, length)
                 );
             }
         }
-        curr_pos++;
+        advance();
     }
 
     // end-of-file
-    tokens.push_back({TokenType::END_OF_FILE, "", curr_line});
+    tokens.push_back({TokenType::END_OF_FILE, "", curr_line, curr_column});
 
     return tokens;
 }
