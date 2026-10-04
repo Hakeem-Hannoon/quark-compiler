@@ -64,10 +64,15 @@ std::vector<Token> Lexer::tokenize() {
             }
 
             // `12abc` is a malformed literal, not an integer followed by a name.
+            // Swallow the rest of the word so the message shows all of it.
             if (curr_pos < size && isIdentifierStart(source[curr_pos])) {
+                while (curr_pos < size && isIdentifierPart(source[curr_pos])) {
+                    curr_pos++;
+                }
+
                 throw CompileError(
                     curr_line,
-                    "Malformed number: " + source.substr(start, curr_pos - start + 1)
+                    "Malformed number: " + source.substr(start, curr_pos - start)
                 );
             }
 
