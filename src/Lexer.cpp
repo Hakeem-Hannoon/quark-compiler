@@ -1,6 +1,7 @@
 #include "quark/Lexer.h"
 #include "quark/Error.h"
 #include <cctype>   // for isspace, isalpha, isdigit, isalnum
+#include <string>
 
 // Constructor
 Lexer::Lexer(const std::string& source) : source(source), curr_pos(0), curr_line(1) {}
@@ -12,6 +13,53 @@ namespace {
 
     bool isIdentifierPart(char c) {
         return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+    }
+
+    // Bytes in the UTF-8 character starting at `pos`. Anything that is not a
+    // well-formed multi-byte sequence counts as a single byte.
+    int utf8Length(const std::string& source, int pos) {
+        const int size = static_cast<int>(source.size());
+        const unsigned char lead = static_cast<unsigned char>(source[pos]);
+
+        int length = 1;
+        if ((lead & 0xE0) == 0xC0) {
+            length = 2;
+        } else if ((lead & 0xF0) == 0xE0) {
+            length = 3;
+        } else if ((lead & 0xF8) == 0xF0) {
+            length = 4;
+        }
+
+        if (pos + length > size) {
+            return 1;
+        }
+
+        for (int i = 1; i < length; i++) {
+            const unsigned char next = static_cast<unsigned char>(source[pos + i]);
+            if ((next & 0xC0) != 0x80) {
+                return 1;
+            }
+        }
+
+        return length;
+    }
+
+    // The message for a character Quark has no use for. A non-ASCII character
+    // is several bytes long and is quoted whole; a byte that cannot be shown
+    // at all (a control character, or broken UTF-8) is given in hex.
+    std::string describeUnexpected(const std::string& source, int pos, int length) {
+        const unsigned char byte = static_cast<unsigned char>(source[pos]);
+
+        if (length == 1 && (byte < 0x20 || byte >= 0x7F)) {
+            const char* digits = "0123456789ABCDEF";
+            std::string hex = "0x";
+            hex += digits[byte >> 4];
+            hex += digits[byte & 0x0F];
+
+            return "Unexpected byte: " + hex;
+        }
+
+        return "Unexpected character: '" + source.substr(pos, length) + "'";
     }
 }
 
@@ -110,11 +158,14 @@ std::vector<Token> Lexer::tokenize() {
             case ';':
                 tokens.push_back({TokenType::SEMICOLON, ";", curr_line});
                 break;
-            default:
+            default: {
+                const int length = utf8Length(source, curr_pos);
+
                 throw CompileError(
                     curr_line,
-                    std::string("Unexpected character: '") + c + "'"
+                    describeUnexpected(source, curr_pos, length)
                 );
+            }
         }
         curr_pos++;
     }
