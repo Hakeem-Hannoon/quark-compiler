@@ -6,8 +6,8 @@
 
 // Walks the AST and rejects programs that parse but cannot mean anything:
 // reads of undeclared variables, duplicate declarations, calls to unknown
-// functions, wrong argument counts, statements whose value is discarded, and
-// division by a literal zero.
+// functions, wrong argument counts, print() used as a value, statements whose
+// value is discarded, and division by a literal zero.
 //
 // Quark has a single global scope and one type (int), so this is the whole of
 // the front end's checking.
@@ -17,6 +17,7 @@ private:
 
     void analyzeStatement(Stmt* stmt);
     void analyzeExpression(Expr* expr);
+    void analyzeCall(CallExpr* call);
 
 public:
     // Throws CompileError on the first problem found.

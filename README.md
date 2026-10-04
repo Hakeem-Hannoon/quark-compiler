@@ -138,8 +138,8 @@ Quark variables are emitted with a `q_` prefix, so a variable named `int` or
 
 What the analyzer catches: reads of undeclared variables, duplicate
 declarations, assignment before declaration, unknown functions, wrong argument
-counts, expression statements whose result is discarded, and division by a
-literal zero.
+counts, `print()` used as a value, expression statements whose result is
+discarded, and division by a literal zero.
 
 ## Tests
 

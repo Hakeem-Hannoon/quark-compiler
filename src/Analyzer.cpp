@@ -43,14 +43,16 @@ void Analyzer::analyzeStatement(Stmt* stmt) {
     if (ExprStmt* expression = dynamic_cast<ExprStmt*>(stmt)) {
         // Nothing in Quark has a side effect except a call, so any other
         // expression statement is a mistake rather than dead code.
-        if (!dynamic_cast<CallExpr*>(expression->expr)) {
+        CallExpr* call = dynamic_cast<CallExpr*>(expression->expr);
+
+        if (!call) {
             throw CompileError(
                 expression->line,
                 "Expression result is unused"
             );
         }
 
-        analyzeExpression(expression->expr);
+        analyzeCall(call);
         return;
     }
 
@@ -92,22 +94,33 @@ void Analyzer::analyzeExpression(Expr* expr) {
     }
 
     if (CallExpr* call = dynamic_cast<CallExpr*>(expr)) {
-        if (call->callee != BUILTIN_PRINT) {
-            throw CompileError(call->line, "Unknown function: " + call->callee);
-        }
+        analyzeCall(call);
 
-        if (call->args.size() != PRINT_ARITY) {
-            throw CompileError(
-                call->line,
-                "print() takes 1 argument, got " + std::to_string(call->args.size())
-            );
-        }
-
-        for (Expr* arg : call->args) {
-            analyzeExpression(arg);
-        }
-        return;
+        // Reaching a call from here means it sits inside a larger expression.
+        // print() has nothing to give one; letting it through would hand the
+        // program whatever C's printf happens to return.
+        throw CompileError(
+            call->line,
+            "print() does not return a value"
+        );
     }
 
     throw CompileError(expr->line, "Unsupported expression");
+}
+
+void Analyzer::analyzeCall(CallExpr* call) {
+    if (call->callee != BUILTIN_PRINT) {
+        throw CompileError(call->line, "Unknown function: " + call->callee);
+    }
+
+    if (call->args.size() != PRINT_ARITY) {
+        throw CompileError(
+            call->line,
+            "print() takes 1 argument, got " + std::to_string(call->args.size())
+        );
+    }
+
+    for (Expr* arg : call->args) {
+        analyzeExpression(arg);
+    }
 }
