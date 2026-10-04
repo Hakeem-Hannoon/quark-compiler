@@ -1,0 +1,4 @@
+// Every token kind, and the places they are easy to get wrong.
+let letter = _x1 + 007;
+	a=b*(c/d)-e,f; // a tab before `a`, and no spaces anywhere else
+x / y // a slash is only a comment when doubled

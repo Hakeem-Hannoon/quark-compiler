@@ -5,6 +5,8 @@
 #   tests/cases/NAME.qr        compiles, runs, and its stdout must match NAME.out
 #   tests/errors/NAME.qr       must fail to compile with exactly the errors in
 #                              NAME.err, one per line, in that order
+#   tests/tokens/NAME.qr       its token stream must match NAME.tokens
+#   tests/emit/NAME.qr         its AST must render to NAME.tree and NAME.dot
 #
 # Usage: QUARKC=build/quarkc tests/run_tests.sh
 
@@ -112,6 +114,32 @@ for source in "$root"/tests/errors/*.qr; do
             fail "error/$name" "expected message containing: $expected" "actual: $actual"
             ;;
     esac
+done
+
+# --- the token stream --------------------------------------------------------
+#
+# Pins what the lexer produces on its own: token kinds, text, and positions.
+# The other suites only see the lexer through the stages built on top of it.
+
+for source in "$root"/tests/tokens/*.qr; do
+    [ -e "$source" ] || continue
+
+    name=$(basename "$source" .qr)
+    expected_file="$root/tests/tokens/$name.tokens"
+
+    if [ ! -f "$expected_file" ]; then
+        fail "tokens/$name" "missing expected token file: $expected_file"
+        continue
+    fi
+
+    actual=$("$quarkc" "$source" --emit-tokens 2>&1)
+
+    if [ "$actual" != "$(cat "$expected_file")" ]; then
+        fail "tokens/$name" "output does not match $expected_file" "actual: $actual"
+        continue
+    fi
+
+    pass "tokens/$name"
 done
 
 # --- the AST visualisers -----------------------------------------------------

@@ -155,6 +155,7 @@ discarded, and division by a literal zero.
 - `tests/cases/NAME.qr` must compile, run, and print exactly `NAME.out`.
 - `tests/errors/NAME.qr` must be rejected with exactly the errors in `NAME.err`,
   one per line.
+- `tests/tokens/NAME.qr` must lex to exactly the token stream in `NAME.tokens`.
 - `tests/emit/NAME.qr` must render to `NAME.tree` and `NAME.dot`. Its SVG is
   checked structurally — one box per AST node, document closed — rather than
   pinned to exact geometry.
