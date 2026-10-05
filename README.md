@@ -84,17 +84,37 @@ $ ./build/quarkc examples/1.qr --emit-dot | dot -Tpng -o tree.png
 
 ## The language
 
-One type (32-bit `int`), one scope (global), one builtin (`print`).
+Two types (32-bit `int` and `bool`), one scope (global), one builtin (`print`).
 
 ```
-let x = 10;        // declare
-x = x + 1;         // assign to something already declared
-print(x * 2);      // the only builtin; takes exactly one argument
+let x = 10;             // declare; x is an int because 10 is
+x = x + 1;              // assign to something already declared
+let small = x < 100;    // small is a bool
+print(x * 2);           // the only builtin; takes exactly one argument
+print(small && !false); // prints true
 // comments run to end of line
 ```
 
-Operators are `+ - * /` with the usual precedence, unary `-` and `+`, and
-parentheses for grouping. Division truncates toward zero, as in C.
+A variable has the type of the value it is declared with, and keeps it. Nothing
+converts between the two types: `true + 1`, `!5` and assigning a bool to an int
+variable are all compile errors. `true` and `false` are reserved words.
+
+Operators, from tightest-binding to loosest:
+
+| Operators | Operands | Result |
+| --- | --- | --- |
+| unary `-` `+` | int | int |
+| unary `!` | bool | bool |
+| `*` `/` | int, int | int |
+| `+` `-` | int, int | int |
+| `<` `<=` `>` `>=` | int, int | bool |
+| `==` `!=` | two of the same type | bool |
+| `&&` | bool, bool | bool |
+| `\|\|` | bool, bool | bool |
+
+Parentheses group. Division truncates toward zero, as in C. `&&` and `||` skip
+their right-hand side when the left already settles the answer. Because a
+comparison gives a bool, `3 > 2 > 1` is a type error rather than a wrong answer.
 
 Integer literals run from `-2147483648` to `2147483647`. An expression may be
 at most 500 levels deep, counting both nesting and the length of an operator
@@ -108,11 +128,16 @@ statement      := letStmt | assignStmt | exprStmt
 letStmt        := "let" IDENTIFIER "=" expression ";"
 assignStmt     := IDENTIFIER "=" expression ";"
 exprStmt       := expression ";"
-expression     := addition
+expression     := logicalOr
+logicalOr      := logicalAnd ("||" logicalAnd)*
+logicalAnd     := equality ("&&" equality)*
+equality       := comparison (("==" | "!=") comparison)*
+comparison     := addition (("<" | "<=" | ">" | ">=") addition)*
 addition       := multiplication (("+" | "-") multiplication)*
 multiplication := unary (("*" | "/") unary)*
-unary          := ("-" | "+") unary | primary
-primary        := INTEGER | IDENTIFIER | call | "(" expression ")"
+unary          := ("-" | "+" | "!") unary | primary
+primary        := INTEGER | "true" | "false" | IDENTIFIER | call
+                | "(" expression ")"
 call           := IDENTIFIER "(" (expression ("," expression)*)? ")"
 ```
 
@@ -123,7 +148,7 @@ call           := IDENTIFIER "(" (expression ("," expression)*)? ")"
 | Lexer | `Lexer.{h,cpp}`, `Token.{h,cpp}` | Source text to a token stream, tracking line and column |
 | Parser | `Parser.{h,cpp}` | Recursive descent over tokens, producing the AST |
 | AST | `AST.h` | Node types; a `Program` owns everything below it |
-| Analyzer | `Analyzer.{h,cpp}` | Rejects programs that parse but cannot mean anything |
+| Analyzer | `Analyzer.{h,cpp}` | Type-checks, and rejects programs that parse but cannot mean anything |
 | CodeGen | `CodeGen.{h,cpp}` | AST to a self-contained C translation unit |
 | Driver | `main.cpp` | CLI, stage sequencing, invoking the C compiler |
 
@@ -146,7 +171,12 @@ Quark variables are emitted with a `q_` prefix, so a variable named `int` or
 What the analyzer catches: reads of undeclared variables, duplicate
 declarations, assignment before declaration, unknown functions, wrong argument
 counts, `print()` used as a value, expression statements whose result is
-discarded, and division by a literal zero.
+discarded, division by a literal zero, and type errors: an operator given the
+wrong type of operand, or a value assigned to a variable of the other type.
+
+It finds the type errors by working out the type of every expression from the
+types of its parts, and it leaves each answer on the AST node. The code
+generator reads those to declare C variables and to print a bool as a word.
 
 ## Tests
 

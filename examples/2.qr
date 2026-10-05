@@ -18,3 +18,12 @@ print(area);
 // Unary minus, and integer division that truncates toward zero.
 print(-area);
 print(area / 7);
+
+// Comparisons give a bool, which is a separate type from int.
+let roomy = area > 100;
+print(roomy);
+print(width == height);
+
+// Bools combine with !, && and ||.
+print(roomy && !(scale == 0));
+print(width < height || height < width);
