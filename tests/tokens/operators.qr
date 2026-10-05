@@ -1,0 +1,11 @@
+// Two-character operators, and what the lexer does when they run together.
+true false truthy
+a == b != c
+a <= b >= c < d > e
+!a && b || c
+// Longest match first: `===` is `==` then `=`, and `!==` is `!=` then `=`.
+a===b
+a!==b
+a<==b
+!!a
+a=!b

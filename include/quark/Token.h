@@ -5,7 +5,17 @@
 enum class TokenType {
     LET, IDENTIFIER, INTEGER,
 
+    // `true` or `false`; like INTEGER, the token's value says which.
+    BOOLEAN,
+
     EQUAL, PLUS, MINUS, STAR, SLASH,
+
+    // Comparison and logic. Several are two characters long and begin like a
+    // shorter token (`=` and `==`, `<` and `<=`), so the lexer has to look one
+    // character ahead before deciding.
+    EQUAL_EQUAL, BANG_EQUAL,
+    LESS, LESS_EQUAL, GREATER, GREATER_EQUAL,
+    BANG, AND_AND, OR_OR,
 
     LPAREN, RPAREN, COMMA, SEMICOLON,
 

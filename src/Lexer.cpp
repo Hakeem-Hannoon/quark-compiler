@@ -105,7 +105,7 @@ std::vector<Token> Lexer::tokenize() {
         const int line = curr_line;
         const int column = curr_column;
 
-        // 3. Identifiers and the keyword "let"
+        // 3. Identifiers and keywords
         if (isIdentifierStart(c)) {
             int start = curr_pos;
             while (curr_pos < size && isIdentifierPart(source[curr_pos])) {
@@ -115,6 +115,8 @@ std::vector<Token> Lexer::tokenize() {
 
             if (text == "let") {
                 tokens.push_back({TokenType::LET, text, line, column});
+            } else if (text == "true" || text == "false") {
+                tokens.push_back({TokenType::BOOLEAN, text, line, column});
             } else {
                 tokens.push_back({TokenType::IDENTIFIER, text, line, column});
             }
@@ -150,56 +152,67 @@ std::vector<Token> Lexer::tokenize() {
             continue;
         }
 
-        // 5. Single-character tokens
-        switch (c) {
-            case '=':
-                tokens.push_back({TokenType::EQUAL, "=", line, column});
-                break;
-            case '+':
-                tokens.push_back({TokenType::PLUS, "+", line, column});
-                break;
-            case '-':
-                tokens.push_back({TokenType::MINUS, "-", line, column});
-                break;
-            case '*':
-                tokens.push_back({TokenType::STAR, "*", line, column});
-                break;
-            case '/':
-                tokens.push_back({TokenType::SLASH, "/", line, column});
-                break;
-            case '(':
-                tokens.push_back({TokenType::LPAREN, "(", line, column});
-                break;
-            case ')':
-                tokens.push_back({TokenType::RPAREN, ")", line, column});
-                break;
-            case ',':
-                tokens.push_back({TokenType::COMMA, ",", line, column});
-                break;
-            case ';':
-                tokens.push_back({TokenType::SEMICOLON, ";", line, column});
-                break;
-            default: {
-                const int length = utf8Length(source, curr_pos);
+        // 5. Operators and punctuation
+        //
+        // `=` and `==` begin the same way, so one character is not enough to
+        // tell them apart. Look at the one after it and take the longer token
+        // whenever it fits; this rule is known as "maximal munch". `next` is
+        // '\0' at the end of the file, which completes nothing.
+        const char next = (curr_pos + 1 < size) ? source[curr_pos + 1] : '\0';
 
-                found_errors.push_back(CompileError(
-                    line,
-                    column,
-                    describeUnexpected(source, curr_pos, length)
-                ));
-                tokens.push_back(
-                    {TokenType::INVALID, source.substr(curr_pos, length), line, column}
-                );
+        TokenType type = TokenType::INVALID;
+        int length = 1;
 
-                // Step over the whole character; the advance() below takes
-                // the last byte of it.
-                for (int i = 1; i < length; i++) {
-                    advance();
-                }
-                break;
+        // Picks the two-character token if `next` completes it, and otherwise
+        // the one-character token that `c` is on its own.
+        auto longest = [&](char second, TokenType two, TokenType one) {
+            if (next == second) {
+                type = two;
+                length = 2;
+            } else {
+                type = one;
             }
+        };
+
+        switch (c) {
+            case '=': longest('=', TokenType::EQUAL_EQUAL, TokenType::EQUAL); break;
+            case '!': longest('=', TokenType::BANG_EQUAL, TokenType::BANG); break;
+            case '<': longest('=', TokenType::LESS_EQUAL, TokenType::LESS); break;
+            case '>': longest('=', TokenType::GREATER_EQUAL, TokenType::GREATER); break;
+
+            // A single & or | is not an operator in Quark.
+            case '&': longest('&', TokenType::AND_AND, TokenType::INVALID); break;
+            case '|': longest('|', TokenType::OR_OR, TokenType::INVALID); break;
+
+            case '+': type = TokenType::PLUS; break;
+            case '-': type = TokenType::MINUS; break;
+            case '*': type = TokenType::STAR; break;
+            case '/': type = TokenType::SLASH; break;
+            case '(': type = TokenType::LPAREN; break;
+            case ')': type = TokenType::RPAREN; break;
+            case ',': type = TokenType::COMMA; break;
+            case ';': type = TokenType::SEMICOLON; break;
+
+            default: break;
         }
-        advance();
+
+        if (type == TokenType::INVALID) {
+            length = utf8Length(source, curr_pos);
+
+            std::string message = describeUnexpected(source, curr_pos, length);
+
+            if (c == '&' || c == '|') {
+                message += std::string(" (did you mean '") + c + c + "'?)";
+            }
+
+            found_errors.push_back(CompileError(line, column, message));
+        }
+
+        tokens.push_back({type, source.substr(curr_pos, length), line, column});
+
+        for (int i = 0; i < length; i++) {
+            advance();
+        }
     }
 
     // end-of-file
