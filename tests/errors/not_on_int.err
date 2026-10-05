@@ -1,0 +1,1 @@
+not_on_int.qr:1:7: error: Operator '!' needs a bool operand, got int

@@ -287,7 +287,7 @@ Expr* Parser::parseUnary(){
         }
     }
 
-    if (check(TokenType::MINUS) || check(TokenType::PLUS)){
+    if (check(TokenType::MINUS) || check(TokenType::PLUS) || check(TokenType::BANG)){
         Token op = advance();
 
         enterExpression(op);
@@ -364,9 +364,20 @@ Expr* Parser::parseEquality(){
     );
 }
 
+// `&&` is looser than every comparison, so `1 < 2 && 2 < 3` needs no brackets.
+Expr* Parser::parseLogicalAnd(){
+    return parseBinaryLevel(&Parser::parseEquality, {TokenType::AND_AND});
+}
+
+// `||` is looser than `&&`, the same way `+` is looser than `*`:
+// `a || b && c` means `a || (b && c)`.
+Expr* Parser::parseLogicalOr(){
+    return parseBinaryLevel(&Parser::parseLogicalAnd, {TokenType::OR_OR});
+}
+
 // The loosest level; everything else is reached from here.
 Expr* Parser::parseExpression() {
-    return parseEquality();
+    return parseLogicalOr();
 }
 
 // ----------------------------------------------------------------- statements

@@ -1,0 +1,1 @@
+and_on_ints.qr:1:9: error: Operator '&&' needs bool operands, got int and int

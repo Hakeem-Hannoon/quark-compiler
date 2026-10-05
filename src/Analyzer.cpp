@@ -18,6 +18,10 @@ namespace {
         return op == "==" || op == "!=";
     }
 
+    bool isLogical(const std::string& op) {
+        return op == "&&" || op == "||";
+    }
+
     // The error for a binary operator whose operands are not the type it
     // works on, e.g. "Operator '+' needs int operands, got bool and int".
     CompileError operandError(BinaryExpr* binary, Type wanted, Type left, Type right) {
@@ -135,16 +139,21 @@ Type Analyzer::typeOf(Expr* expr) {
     if (UnaryExpr* unary = dynamic_cast<UnaryExpr*>(expr)) {
         Type operand = analyzeExpression(unary->operand);
 
-        // - and + : int -> int
-        if (operand != Type::Int) {
+        // !       : bool -> bool
+        // - and + : int  -> int
+        Type wanted = (unary->op == "!") ? Type::Bool : Type::Int;
+
+        if (operand != wanted) {
             throw CompileError(
                 unary->line,
                 unary->column,
-                "Operator '" + unary->op + "' needs an int operand, got " + typeName(operand)
+                "Operator '" + unary->op + "' needs " +
+                    (wanted == Type::Bool ? "a bool" : "an int") +
+                    " operand, got " + typeName(operand)
             );
         }
 
-        return Type::Int;
+        return wanted;
     }
 
     if (BinaryExpr* binary = dynamic_cast<BinaryExpr*>(expr)) {
@@ -190,6 +199,15 @@ Type Analyzer::typeOf(Expr* expr) {
                     "Operator '" + binary->op + "' needs operands of the same type, got " +
                         typeName(left) + " and " + typeName(right)
                 );
+            }
+
+            return Type::Bool;
+        }
+
+        // && || : bool, bool -> bool
+        if (isLogical(binary->op)) {
+            if (left != Type::Bool || right != Type::Bool) {
+                throw operandError(binary, Type::Bool, left, right);
             }
 
             return Type::Bool;

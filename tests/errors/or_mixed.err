@@ -1,0 +1,1 @@
+or_mixed.qr:2:10: error: Operator '||' needs bool operands, got bool and int

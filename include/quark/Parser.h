@@ -18,12 +18,14 @@
 //   letStmt        := "let" IDENTIFIER "=" expression ";"
 //   assignStmt     := IDENTIFIER "=" expression ";"
 //   exprStmt       := expression ";"
-//   expression     := equality
+//   expression     := logicalOr
+//   logicalOr      := logicalAnd ("||" logicalAnd)*
+//   logicalAnd     := equality ("&&" equality)*
 //   equality       := comparison (("==" | "!=") comparison)*
 //   comparison     := addition (("<" | "<=" | ">" | ">=") addition)*
 //   addition       := multiplication (("+" | "-") multiplication)*
 //   multiplication := unary (("*" | "/") unary)*
-//   unary          := ("-" | "+") unary | primary
+//   unary          := ("-" | "+" | "!") unary | primary
 //   primary        := INTEGER | "true" | "false" | IDENTIFIER | call
 //                   | "(" expression ")"
 //   call           := IDENTIFIER "(" (expression ("," expression)*)? ")"
@@ -70,6 +72,8 @@ private:
     Expr* parseAddition();
     Expr* parseComparison();
     Expr* parseEquality();
+    Expr* parseLogicalAnd();
+    Expr* parseLogicalOr();
 
 public:
     Parser(const std::vector<Token>& tokens);

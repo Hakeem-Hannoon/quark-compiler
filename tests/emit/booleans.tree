@@ -1,0 +1,17 @@
+Program
+├─ Let ok
+│  └─ Binary ||
+│     ├─ Binary &&
+│     │  ├─ Unary !
+│     │  │  └─ Bool false
+│     │  └─ Binary <=
+│     │     ├─ Binary +
+│     │     │  ├─ Integer 1
+│     │     │  └─ Integer 2
+│     │     └─ Integer 3
+│     └─ Binary !=
+│        ├─ Integer 4
+│        └─ Integer 5
+└─ ExprStmt
+   └─ Call print
+      └─ Identifier ok
