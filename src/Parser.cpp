@@ -194,6 +194,16 @@ Expr* Parser::parsePrimary(){
         return expr;
     }
 
+    if (token.type == TokenType::BOOLEAN){
+        advance();
+
+        Expr* expr = new BoolExpr(token.value == "true");
+        locate(expr, token);
+        height = 1;
+
+        return expr;
+    }
+
     if (token.type == TokenType::IDENTIFIER){
         advance();
 

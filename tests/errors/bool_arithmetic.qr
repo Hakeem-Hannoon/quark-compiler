@@ -1,0 +1,2 @@
+let ready = true;
+let x = ready + 1;

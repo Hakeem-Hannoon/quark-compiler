@@ -12,14 +12,39 @@ struct Node {
     virtual ~Node() = default;
 };
 
+// ---------------------------------------------------------------------- types
+
+// What kind of value an expression produces. Every expression has exactly one
+// type, and nothing converts between them: a bool is never a number.
+enum class Type {
+    Int,
+    Bool
+};
+
+// The type's name as it is written in error messages.
+inline std::string typeName(Type type) {
+    return type == Type::Bool ? "bool" : "int";
+}
+
 // ---------------------------------------------------------------- expressions
 
-struct Expr : Node {};
+struct Expr : Node {
+    // Worked out by the analyzer and read by the code generator. The parser
+    // does not know types, so this is only meaningful once analysis has run.
+    Type type = Type::Int;
+};
 
 struct IntegerExpr : Expr {
     int value;
 
     IntegerExpr(int value) : value(value){}
+};
+
+// true or false
+struct BoolExpr : Expr {
+    bool value;
+
+    BoolExpr(bool value) : value(value){}
 };
 
 struct IdentifierExpr : Expr{

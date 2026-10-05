@@ -1,0 +1,10 @@
+// A bool is its own type: it is declared, reassigned and printed like an int,
+// but it is never a number.
+let yes = true;
+let no = false;
+print(yes);
+print(no);
+
+yes = no;
+print(yes);
+print(true);

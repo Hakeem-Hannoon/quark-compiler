@@ -1,0 +1,1 @@
+bool_negate.qr:1:7: error: Operator '-' needs an int operand, got bool

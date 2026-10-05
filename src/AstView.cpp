@@ -47,6 +47,14 @@ TreeNode viewExpression(Expr* expr) {
         );
     }
 
+    if (BoolExpr* boolean = dynamic_cast<BoolExpr*>(expr)) {
+        return makeNode(
+            std::string("Bool ") + (boolean->value ? "true" : "false"),
+            NodeKind::Literal,
+            expr
+        );
+    }
+
     if (IdentifierExpr* identifier = dynamic_cast<IdentifierExpr*>(expr)) {
         return makeNode("Identifier " + identifier->name, NodeKind::Variable, expr);
     }

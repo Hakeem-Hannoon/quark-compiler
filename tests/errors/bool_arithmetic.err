@@ -1,0 +1,1 @@
+bool_arithmetic.qr:2:15: error: Operator '+' needs int operands, got bool and int

@@ -18,7 +18,8 @@
 //   addition       := multiplication (("+" | "-") multiplication)*
 //   multiplication := unary (("*" | "/") unary)*
 //   unary          := ("-" | "+") unary | primary
-//   primary        := INTEGER | IDENTIFIER | call | "(" expression ")"
+//   primary        := INTEGER | "true" | "false" | IDENTIFIER | call
+//                   | "(" expression ")"
 //   call           := IDENTIFIER "(" (expression ("," expression)*)? ")"
 class Parser {
 private:
