@@ -1,0 +1,1 @@
+chained_comparison.qr:1:13: error: Operator '>' needs int operands, got bool and int

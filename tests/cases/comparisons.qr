@@ -1,0 +1,23 @@
+// Ordering works on ints and gives a bool.
+print(1 < 2);
+print(2 < 1);
+print(2 <= 2);
+print(3 > 2);
+print(2 >= 3);
+
+// Equality works on any two values of the same type.
+print(1 == 1);
+print(1 != 1);
+print(true == false);
+print(true != false);
+
+// Arithmetic groups before comparison, and comparison before equality.
+print(1 + 2 < 4);
+print(2 * 3 == 6);
+print(1 < 2 == 3 < 4);
+print(-1 < 0);
+
+// A comparison is a value like any other.
+let big = 10 > 3;
+print(big);
+print(big == true);

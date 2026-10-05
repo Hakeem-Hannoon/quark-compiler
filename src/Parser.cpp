@@ -343,8 +343,30 @@ Expr* Parser::parseAddition(){
     return parseBinaryLevel(&Parser::parseMultiplication, {TokenType::PLUS, TokenType::MINUS});
 }
 
+// Comparison is looser than arithmetic, so that `1 + 2 < 4` adds first.
+Expr* Parser::parseComparison(){
+    return parseBinaryLevel(
+        &Parser::parseAddition,
+        {
+            TokenType::LESS,
+            TokenType::LESS_EQUAL,
+            TokenType::GREATER,
+            TokenType::GREATER_EQUAL
+        }
+    );
+}
+
+// Equality is looser again, so that `1 < 2 == 3 < 4` compares two comparisons.
+Expr* Parser::parseEquality(){
+    return parseBinaryLevel(
+        &Parser::parseComparison,
+        {TokenType::EQUAL_EQUAL, TokenType::BANG_EQUAL}
+    );
+}
+
+// The loosest level; everything else is reached from here.
 Expr* Parser::parseExpression() {
-    return parseAddition();
+    return parseEquality();
 }
 
 // ----------------------------------------------------------------- statements

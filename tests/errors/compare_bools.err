@@ -1,0 +1,1 @@
+compare_bools.qr:1:12: error: Operator '<' needs int operands, got bool and bool

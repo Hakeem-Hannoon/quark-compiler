@@ -10,6 +10,14 @@ namespace {
         return op == "+" || op == "-" || op == "*" || op == "/";
     }
 
+    bool isComparison(const std::string& op) {
+        return op == "<" || op == "<=" || op == ">" || op == ">=";
+    }
+
+    bool isEquality(const std::string& op) {
+        return op == "==" || op == "!=";
+    }
+
     // The error for a binary operator whose operands are not the type it
     // works on, e.g. "Operator '+' needs int operands, got bool and int".
     CompileError operandError(BinaryExpr* binary, Type wanted, Type left, Type right) {
@@ -158,6 +166,33 @@ Type Analyzer::typeOf(Expr* expr) {
             }
 
             return Type::Int;
+        }
+
+        // < <= > >= : int, int -> bool
+        //
+        // The result is not an int, which is what makes `3 > 2 > 1` an error
+        // here instead of the quiet wrong answer it is in C: the second `>`
+        // would be comparing a bool with an int.
+        if (isComparison(binary->op)) {
+            if (left != Type::Int || right != Type::Int) {
+                throw operandError(binary, Type::Int, left, right);
+            }
+
+            return Type::Bool;
+        }
+
+        // == != : any two values of the same type -> bool
+        if (isEquality(binary->op)) {
+            if (left != right) {
+                throw CompileError(
+                    binary->line,
+                    binary->column,
+                    "Operator '" + binary->op + "' needs operands of the same type, got " +
+                        typeName(left) + " and " + typeName(right)
+                );
+            }
+
+            return Type::Bool;
         }
 
         throw CompileError(binary->line, binary->column, "Unsupported operator: " + binary->op);

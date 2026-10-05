@@ -9,12 +9,18 @@
 
 // Recursive-descent parser for Quark.
 //
+// The expression rules run from loosest-binding to tightest. Each is a function
+// that calls the next one down for its operands, which is all that operator
+// precedence is: the deeper the rule, the earlier its operator groups.
+//
 //   program        := statement* EOF
 //   statement      := letStmt | assignStmt | exprStmt
 //   letStmt        := "let" IDENTIFIER "=" expression ";"
 //   assignStmt     := IDENTIFIER "=" expression ";"
 //   exprStmt       := expression ";"
-//   expression     := addition
+//   expression     := equality
+//   equality       := comparison (("==" | "!=") comparison)*
+//   comparison     := addition (("<" | "<=" | ">" | ">=") addition)*
 //   addition       := multiplication (("+" | "-") multiplication)*
 //   multiplication := unary (("*" | "/") unary)*
 //   unary          := ("-" | "+") unary | primary
@@ -62,6 +68,8 @@ private:
     Expr* parseUnary();
     Expr* parseMultiplication();
     Expr* parseAddition();
+    Expr* parseComparison();
+    Expr* parseEquality();
 
 public:
     Parser(const std::vector<Token>& tokens);
