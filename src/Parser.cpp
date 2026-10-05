@@ -296,17 +296,20 @@ Expr* Parser::parseUnary(){
     return parsePrimary();
 }
 
-Expr* Parser::parseMultiplication(){
-    std::unique_ptr<Expr> left(parseUnary());
+// One left-associative level of the grammar:  operand (operator operand)*
+//
+// Every binary level has this shape. They differ only in which operators they
+// accept and which tighter level supplies their operands, so they share this
+// loop. `operand` is a pointer to a member function: it is how a caller says
+// "parseUnary parses my operands", and `(this->*operand)()` calls it.
+Expr* Parser::parseBinaryLevel(Level operand, std::initializer_list<TokenType> operators){
+    std::unique_ptr<Expr> left((this->*operand)());
     int left_height = height;
 
-    while (
-        check(TokenType::STAR) ||
-        check(TokenType::SLASH)
-    ){
+    while (std::find(operators.begin(), operators.end(), peek().type) != operators.end()){
         Token op = advance();
 
-        std::unique_ptr<Expr> right(parseUnary());
+        std::unique_ptr<Expr> right((this->*operand)());
 
         left_height = std::max(left_height, height) + 1;
         checkHeight(left_height, op);
@@ -322,34 +325,12 @@ Expr* Parser::parseMultiplication(){
     return left.release();
 }
 
-Expr* Parser::parseAddition() {
-    std::unique_ptr<Expr> left(parseMultiplication());
-    int left_height = height;
+Expr* Parser::parseMultiplication(){
+    return parseBinaryLevel(&Parser::parseUnary, {TokenType::STAR, TokenType::SLASH});
+}
 
-    while (
-        check(TokenType::PLUS) ||
-        check(TokenType::MINUS)
-    ) {
-        Token op = advance();
-
-        std::unique_ptr<Expr> right(parseMultiplication());
-
-        left_height = std::max(left_height, height) + 1;
-        checkHeight(left_height, op);
-
-        Expr* combined = new BinaryExpr(
-            op.value,
-            left.release(),
-            right.release()
-        );
-        locate(combined, op);
-
-        left.reset(combined);
-    }
-
-    height = left_height;
-
-    return left.release();
+Expr* Parser::parseAddition(){
+    return parseBinaryLevel(&Parser::parseMultiplication, {TokenType::PLUS, TokenType::MINUS});
 }
 
 Expr* Parser::parseExpression() {

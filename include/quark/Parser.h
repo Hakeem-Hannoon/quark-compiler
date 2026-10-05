@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <string>
 #include <vector>
 #include "Token.h"
@@ -50,6 +51,11 @@ private:
     Stmt* parseLet();
     Stmt* parseAssignment();
     Stmt* parseExprStatement();
+
+    // One precedence level of the grammar, as a member function to call.
+    using Level = Expr* (Parser::*)();
+
+    Expr* parseBinaryLevel(Level operand, std::initializer_list<TokenType> operators);
 
     Expr* parsePrimary();
     Expr* parseUnary();
